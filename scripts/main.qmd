@@ -1,0 +1,16 @@
+---
+title: "main"
+format: html
+editor: visual
+---
+
+```{r}
+# Vamos a chambear 🤠🔥
+data = read.csv("../data/ckd.csv")  # No cambiar esta ruta para leer el csv, funciona para todos
+head(data)
+
+```
+
+```{r}
+
+```
