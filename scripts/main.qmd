@@ -6,11 +6,45 @@ editor: visual
 
 ```{r}
 # Vamos a chambear 🤠🔥
-data = read.csv("../data/ckd.csv")  # No cambiar esta ruta para leer el csv, funciona para todos
+data = read.csv("../data/ckd_clean.csv")  # No cambiar esta ruta para leer el csv, funciona para todos
 head(data)
 
 ```
 
 ```{r}
-
+library(tidyverse)
+library(bnlearn)
 ```
+
+```{r}
+data1 <- data[, c("pcv", "sod", "pot", "bp", "su", "sc")]
+dag1 = model2network("[pcv][sod][pot][bp|pcv:sod:pot][su|bp][sc|bp]")
+```
+
+```{r}
+dag2 = model2network("[age]")
+```
+
+```{r}
+data3 <- data[, c("")]
+dag3 = model2network("[age][htn|age][bp|htn][hemo|bp][class]")
+```
+
+```{r}
+dag1_gbn = bn.fit(dag1, data = data1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
