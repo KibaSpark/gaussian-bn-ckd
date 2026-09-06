@@ -15,6 +15,21 @@ head(data)
 library(tidyverse)
 library(bnlearn)
 ```
+```{r}
+library(mgcv)
+library(gratia)
+```
+
+```{r}
+#eliminamos columnas restantes 
+data$su <- NULL
+data$al <- NULL
+```
+
+```{r}
+head(data)
+```
+
 
 ```{r}
 data1 <- data[, c("age", "bp", "bu", "sc", "sod", "pot")]
@@ -39,6 +54,7 @@ graphviz.plot(dag1, shape = "ellipse")
 ```{r}
 score(dag1, data = data1, type = "bic-g")
 score(dag1, data = data1, type = "aic-g")
+#mejores scores para BIC y AIC
 ```
 
 ```{r}
@@ -61,11 +77,151 @@ score(dag3, data = data3, type = "bic-g")
 score(dag3, data = data3, type = "aic-g")
 ```
 
+```{r}
+#Responder queries con red de la DAG 1 que es la del mejor score para BIC y AIC 
+
+#1. ¿Cómo influye la edad y la presión arterial sobre los niveles de creatinina sérica en los pacientes?
+#se analizan primero los parametros del nodo de creatinina sérica sc 
+
+#se realiza analizis de un modelo lineal para sc utilizando edad y bp 
+modl_q1= lm(sc ~ age + bp, data = data)
+summary(modl_q1)
+
+#pruebas de hipotesis para ver si el sc es independiente de la edad dado el bp 
+ci.test("sc", "age", c("bp"), test="cor", data=data)
+
+#fuerza de arco entre bp y age
+arc.strength(dag1, data=data1, criterion = "cor") 
+
+#inferencia para ver probabilidades para valores de sc dado cierta edad y presión arterial 
+# Escenario 1: Paciente mayor (age > 60) con presión alta (bp > 140) con sc elevado 
+cpquery(dag1_gbn, 
+        event = (sc > 1.2), 
+        evidence = (age > 60 & bp > 121), n=10^6)
+
+# Escenario 2: Paciente joven (age < 40) con presión normal (bp <= 120) con sc elevado 
+cpquery(dag1_gbn, 
+        event = (sc > 1.2), 
+        evidence = (age < 40 & bp <= 120), n=10^6)
 
 
 
+```
+```{r}
+#2. ¿Qué relación existe entre los niveles de sodio y potasio en sangre y la concentración de creatinina sérica? 
+
+#modelo lineal para entre sc con potasio y sodio como varaibles predictoras
+modl_q2= lm(sc ~ sod + pot, data = data1)
+summary(modl_q2)
+
+#fuerza entre arcos para ver la fuerza entre el sodio y la creatinina/potasio y creatinina 
+arc.strength(dag1, data=data1, criterion = "cor")
+
+#cuestiono dependencia de sodio y potasio para sc dados los otros padres (padres de sc son sodio, potasio, bp y bu)
+
+ci.test("sc", "pot", c("sod", "bu", "bp"), test="cor", data=data1)
+ci.test("sc", "sod", c("pot", "bu", "bp"), test="cor", data=data1)
 
 
+```
+
+
+
+```{r}
+#utilizando la dag1, que es la que tuvo el mejor score tanto par BIC como para AIC, se investiga si incluir modelos no paramétricos puede mejorar aún más su score 
+
+
+#1. se analiza modelo entre la presión en sangre y la edad (bp y age)
+#para cada nodo dependiente de sus padres se analiza su modelo lm 
+modbp_lm = lm(bp ~ age, data = data) #bp dependiente de  age, age es independiente
+coef(modbp_lm)
+
+#evaluar si el modelo lineal tiene sentido con una grafica 
+ggplot(data, aes(x = age, y = bp)) +
+  geom_point(color = "steelblue", alpha = 0.3) +
+  geom_smooth(method = lm, se = FALSE, lwd = 2, color = "dodgerblue") +
+  labs(x = "age", y = "bp", title = "") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", margin = margin(0, 0, 5, 0)),
+        axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold", angle = 90))
+#se observa que un modelo lineal no hace tanto sentido ni explica tan bien la relación 
+```
+```{r}
+#2. entre bu y age 
+modbp_lm = lm(bu ~ age, data = data) #bu dependiente de  age, age es independiente
+coef(modbp_lm)
+
+#evaluar si el modelo lineal tiene sentido con una grafica 
+ggplot(data, aes(x = age, y = bu)) +
+  geom_point(color = "steelblue", alpha = 0.3) +
+  geom_smooth(method = lm, se = FALSE, lwd = 2, color = "dodgerblue") +
+  labs(x = "age", y = "bu", title = "") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", margin = margin(0, 0, 5, 0)),
+        axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold", angle = 90))
+#aqui, a diferencia del anterior se observa un mejor ajuste, sin embargo no termina de encajar bien el modelo con los datos de ambas variables 
+```
+
+
+```{r}
+#3. entre sc con padres bp, bu, sodio y potasio 
+modbp_lm = lm(sc ~ bp+bu+sod+pot,data = data) 
+coef(modbp_lm)
+
+#evaluar si el modelo lineal tiene sentido con una grafica 
+ggplot(data, aes(x = bp+bu+sod+pot, y = sc)) +
+  geom_point(color = "steelblue", alpha = 0.3) +
+  geom_smooth(method = lm, se = FALSE, lwd = 2, color = "dodgerblue") +
+  labs(x = "bp+bu+sod+pot", y = "sc", title = "") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", margin = margin(0, 0, 5, 0)),
+        axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold", angle = 90))
+
+#en este caso si se observa que el modelo llega a ajustar bien 
+
+```
+```{r}
+sapply(data[, c("bp", "bu", "sod", "pot")], function(x) length(unique(na.omit(x))))
+```
+
+```{r}
+#con los resultados anteriores se investiga si existe la posibilidad de que involucrando modelos no paramétricos se pueda mejorar el score del modelo 
+
+#Para cada una de las distribuciones locales ajustamos un modelo no paramétrico.
+
+mod_gam_bp = gam(bp~s(age), data = data, method = "REML")
+mod_gam_bu = gam(bu~s(age), data = data, method = "REML")
+mod_gam_sc = gam(sc~s(bp, k=6 )+s(bu)+s(sod)+s(pot), , data = data, method = "REML")
+#en mod_gam_sc se reducen la cantidad máxima de funcionesbase permitidas para la curva a k=6 para bp ya que la variable tiene muy pocos valores únicos distintos en el conjunto de datos. Recordando que k debe de ser menor o igual al numero de valor unicos en la variable
+
+#modelos lineales para nodos que no tienen padres 
+mod_age = lm(age~1, data = data)
+mod_sod = lm(sod~1, data = data)
+mod_pot=lm(pot~1, data=data)
+
+
+```
+
+
+```{r}
+#con los modelos no paramétricos ahora se calcula el score BIC 
+-1/2*(BIC(mod_gam_bp)+ BIC(mod_gam_bu) + BIC(mod_gam_sc) + BIC(mod_age) +
+           BIC(mod_sod) + BIC(mod_pot))    #BIC  del modelo no paramétrico
+
+#se nota una mejora de apenas aprox 7 unidades para el BIC 
+
+```
+```{r}
+#con los modelos no paramétricos ahora se calcula el score AIC 
+-1/2*(AIC(mod_gam_bp)+ AIC(mod_gam_bu) + AIC(mod_gam_sc) + AIC(mod_age) +
+           AIC(mod_sod) + AIC(mod_pot))    #AIC  del modelo no paramétrico
+
+#para el AIC se nota una mejora de aprox 27 unidades
+
+```
 
 
 
