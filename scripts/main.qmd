@@ -17,27 +17,49 @@ library(bnlearn)
 ```
 
 ```{r}
-data1 <- data[, c("pcv", "sod", "pot", "bp", "su", "sc")]
-dag1 = model2network("[pcv][sod][pot][bp|pcv:sod:pot][su|bp][sc|bp]")
+data1 <- data[, c("age", "bp", "bu", "sc", "sod", "pot")]
+dag1 = model2network("[age][sod][pot][bp|age][bu|age][sc|bu:bp:sod:pot]")
 ```
 
 ```{r}
-dag2 = model2network("[age]")
+data2 <- data[, c("age", "bgr", "bp", "rc", "sc", "hemo", "pcv")]
+dag2 = model2network("[age][bgr|age][bp|age][rc|age][sc|bgr:bp:rc][hemo|sc][pcv|hemo]")
 ```
 
 ```{r}
-data3 <- data[, c("")]
-dag3 = model2network("[age][htn|age][bp|htn][hemo|bp][class]")
+data3 <- data[, c("age", "sod", "bp", "pcv", "rc", "wc", "pot", "sc")]
+dag3 = model2network("[age][sod][pot][bp|age:sod][pcv|age][sc|pot:bp][rc|pcv][wc|pcv]")
 ```
 
 ```{r}
 dag1_gbn = bn.fit(dag1, data = data1)
+graphviz.plot(dag1, shape = "ellipse")
 ```
 
+```{r}
+score(dag1, data = data1, type = "bic-g")
+score(dag1, data = data1, type = "aic-g")
+```
 
+```{r}
+dag2_gbn = bn.fit(dag2, data = data2)
+graphviz.plot(dag2, shape = "ellipse")
+```
 
+```{r}
+score(dag2, data = data2, type = "bic-g")
+score(dag2, data = data2, type = "aic-g")
+```
 
+```{r}
+dag3_gbn = bn.fit(dag3, data = data3)
+graphviz.plot(dag3, shape = "ellipse")
+```
 
+```{r}
+score(dag3, data = data3, type = "bic-g")
+score(dag3, data = data3, type = "aic-g")
+```
 
 
 
